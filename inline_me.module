@@ -1,0 +1,143 @@
+<?php
+
+/**
+ * @file
+ * Inline Media Edit module file.
+ */
+
+use Drupal\Component\Serialization\Json;
+use Drupal\Core\Field\WidgetInterface;
+use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\media\Entity\Media;
+use Drupal\media_library\MediaLibraryUiBuilder;
+
+/**
+ * Implements hook_field_widget_settings_summary_alter().
+ */
+function inline_me_field_widget_settings_summary_alter(&$summary, $context) {
+  if ($context['widget']->getPluginId() == 'media_library_widget') {
+    $settings = $context['widget']->getThirdPartySettings('inline_me');
+    if (isset($settings['enable_inline_editing']) && $settings['enable_inline_editing']) {
+      $summary[] = t('Inline editing enabled');
+    }
+    else {
+      $summary[] = t('Inline editing not enabled');
+    }
+  }
+}
+
+/**
+ * Implements hook_field_widget_third_party_settings_form().
+ */
+function inline_me_field_widget_third_party_settings_form(WidgetInterface $plugin, FieldDefinitionInterface $field_definition, $form_mode, $form, FormStateInterface $form_state) {
+  $element = [];
+
+  // Adds the edit link to the form element.
+  if ($plugin->getPluginId() == 'media_library_widget') {
+    $settings = $plugin->getThirdPartySettings('inline_me');
+    $element['enable_inline_editing'] = [
+      '#type' => 'checkbox',
+      '#title' => t('Allow inline editing'),
+      '#default_value' => (isset($settings['enable_inline_editing'])) ? $settings['enable_inline_editing'] : '',
+    ];
+  }
+
+  return $element;
+}
+
+/**
+ * Implements hook_field_widget_single_element_WIDGET_TYPE_form_alter().
+ */
+function inline_me_field_widget_single_element_media_library_widget_form_alter(array &$element, FormStateInterface $form_state, array $context) {
+  // Add an edit link to media items if the field has been configured to do so.
+  $settings = $context['widget']->getThirdPartySettings('inline_me');
+  if (empty($settings['enable_inline_editing'])) {
+    return;
+  }
+
+  /** @var \Drupal\media\Entity\Media $media */
+  $media = $context['items']->entity ?: NULL;
+
+  // The entity property will exist only when a media item has been selected.
+  // Also, check if the current user has access to edit this media item.
+  if ($media instanceof Media && $media->access('update')) {
+    // Piggy back on the "Edit Media Entity in Modal" module, which requires
+    // only a special query parameter added to the URL and a few other params to
+    // hook up the form.
+    $element['selection'][0]['edit_media_link'] = [
+      '#type' => 'link',
+      '#title' => t('Edit media item'),
+      '#url' => $media->toUrl('edit-form', [
+        'query' => [
+          'edit_media_in_modal' => TRUE,
+        ],
+      ]),
+      '#attributes' => [
+        'class' => [
+          'icon-link',
+          'media-library-item__edit',
+          'media-library-edit__link',
+          'js-media-library-edit-link',
+          'use-ajax',
+        ],
+        'data-dialog-options' => Json::encode([
+          'width' => '920',
+          'height' => '75%',
+          'classes' => [
+            'ui-dialog-content' => 'media-library-edit__modal',
+          ],
+        ]),
+        'data-dialog-type' => 'modal',
+        'target' => '_self',
+      ],
+    ];
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function inline_me_form_media_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // There's really no use for the revision widget, so hide it.
+  if (isset($form['revision_information'])) {
+    $form['revision_information']['#access'] = FALSE;
+  }
+
+  // Additional processing required for Ajax-based form submissions.
+  if (\Drupal::request()->isXmlHttpRequest()) {
+    // Hide the "Delete" button.
+    if (isset($form['actions']['delete'])) {
+      $form['actions']['delete']['#access'] = FALSE;
+    }
+    // If we're dealing with an image, hide the remove item button.
+    if (isset($form['field_media_image'])) {
+      $form['field_media_image']['widget'][0]['#process'][] = 'inline_me_image_media_widget_process';
+    }
+  }
+}
+
+/**
+ * Form processsor for the image media widget.
+ *
+ * @param array $element
+ *   A form element array containing basic properties for the widget.
+ * @param \Drupal\Core\Form\FormStateInterface $form_state
+ *   FormState Object.
+ * @param array $form
+ *   The form structure where widgets are being attached to.
+ *
+ * @return array
+ *   The form element.
+ */
+function inline_me_image_media_widget_process(array $element, FormStateInterface $form_state, array $form) {
+  // Hide the remove item button. While replacing the image is not an issue on
+  // itself, it isn't supported because the thumbnail preview in the parent form
+  // is not updated after closing the modal, which is not optimal.
+  // @todo Look for a way to hook a behavior to update the thumbnail preview.
+  if (isset($element['remove_button'])) {
+    $element['remove_button']['#access'] = FALSE;
+  }
+
+  return $element;
+}

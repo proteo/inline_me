@@ -1,0 +1,9 @@
+name: Inline Media Edit
+description: Adds a button to edit media items in a modal window.
+type: module
+core_version_requirement: ^9
+package: Media
+dependencies:
+  - media
+  - media_library
+  - edit_media_modal

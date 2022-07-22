@@ -1,0 +1,17 @@
+{
+  "name": "proteo/inline_me",
+  "description": "Adds a button to edit media items in a modal window.",
+  "type": "drupal-custom-module",
+  "homepage": "https://github.com/proteo/inline_me",
+  "license": "GPL-3.0+",
+  "authors": [
+    {
+      "name": "Proteo",
+      "email": "me@proteo.dev"
+    }
+  ],
+  "require": {
+    "php": ">=7.4.0",
+    "drupal/core": "^9.2"
+  }
+}
