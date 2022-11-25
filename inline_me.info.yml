@@ -4,6 +4,6 @@ type: module
 core_version_requirement: ^9
 package: Media
 dependencies:
-  - media
-  - media_library
-  - edit_media_modal
+  - drupal:media
+  - drupal:media_library
+  - drupal:edit_media_modal
