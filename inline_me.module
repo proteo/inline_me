@@ -52,46 +52,49 @@ function inline_me_field_widget_third_party_settings_form(WidgetInterface $plugi
 function inline_me_field_widget_single_element_media_library_widget_form_alter(array &$element, FormStateInterface $form_state, array $context) {
   // Add an edit link to media items if the field has been configured to do so.
   $settings = $context['widget']->getThirdPartySettings('inline_me');
-  if (empty($settings['enable_inline_editing'])) {
+
+  if (empty($settings['enable_inline_editing']) || empty($context['items'])) {
     return;
   }
 
-  /** @var \Drupal\media\Entity\Media $media */
-  $media = $context['items']->entity ?: NULL;
+  foreach ($context['items'] as $key => $item) {
+    /** @var \Drupal\media\Entity\Media $media */
+    $media = $item->entity ?: NULL;
 
-  // The entity property will exist only when a media item has been selected.
-  // Also, check if the current user has access to edit this media item.
-  if ($media instanceof Media && $media->access('update')) {
-    // Piggy back on the "Edit Media Entity in Modal" module, which requires
-    // only a special query parameter added to the URL and a few other params to
-    // hook up the form.
-    $element['selection'][0]['edit_media_link'] = [
-      '#type' => 'link',
-      '#title' => t('Edit media item'),
-      '#url' => $media->toUrl('edit-form', [
-        'query' => [
-          'edit_media_in_modal' => TRUE,
-        ],
-      ]),
-      '#attributes' => [
-        'class' => [
-          'icon-link',
-          'media-library-item__edit',
-          'media-library-edit__link',
-          'js-media-library-edit-link',
-          'use-ajax',
-        ],
-        'data-dialog-options' => Json::encode([
-          'width' => '920',
-          'height' => '75%',
-          'classes' => [
-            'ui-dialog-content' => 'media-library-edit__modal',
+    // The entity property will exist only when a media item has been selected.
+    // Also, check if the current user has access to edit this media item.
+    if ($media instanceof Media && $media->access('update')) {
+      // Piggy back on the "Edit Media Entity in Modal" module, which requires
+      // only a special query parameter added to the URL and a few other params
+      // to hook up the form.
+      $element['selection'][$key]['edit_media_link'] = [
+        '#type' => 'link',
+        '#title' => t('Edit media item'),
+        '#url' => $media->toUrl('edit-form', [
+          'query' => [
+            'edit_media_in_modal' => TRUE,
           ],
         ]),
-        'data-dialog-type' => 'modal',
-        'target' => '_self',
-      ],
-    ];
+        '#attributes' => [
+          'class' => [
+            'icon-link',
+            'media-library-item__edit',
+            'media-library-edit__link',
+            'js-media-library-edit-link',
+            'use-ajax',
+          ],
+          'data-dialog-options' => Json::encode([
+            'width' => '920',
+            'height' => '75%',
+            'classes' => [
+              'ui-dialog-content' => 'media-library-edit__modal',
+            ],
+          ]),
+          'data-dialog-type' => 'modal',
+          'target' => '_self',
+        ],
+      ];
+    }
   }
 }
 
